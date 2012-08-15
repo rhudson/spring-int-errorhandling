@@ -80,6 +80,44 @@
 
 
 	<!-- **************************************** -->
+	<!-- Gateway that attempts to route Exceptions based on a message header. -->
+	<!-- **************************************** -->
+
+	<int:gateway id="gatewayErrorChannelInHeader" service-interface="realdoc.errortest.IntTestGateway"
+		default-request-channel="inputChannelErrorChannel" />
+
+	<int:chain input-channel="inputChannelErrorChannel" output-channel="outputQueue">
+		<int:header-enricher>
+				<int:error-channel ref="s1Error"/>
+		</int:header-enricher>
+		<int:service-activator ref="saBean" method="bad" />
+	</int:chain>
+
+
+	<!-- **************************************** -->
+	<!-- Gateway that attempts to route Exceptions based on a message header. -->
+	<!-- **************************************** -->
+
+	<int:gateway id="gatewayErrorChannelInHeaderQueued" service-interface="realdoc.errortest.IntTestGateway"
+		default-request-channel="queueOfMessages" />
+
+	<int:channel id="queueOfMessages">
+		<int:queue capacity="25"/>
+	</int:channel>
+	
+	<int:bridge input-channel="queueOfMessages" output-channel="inputChannelErrorChannelQueued">
+	    <int:poller max-messages-per-poll="1" fixed-rate="1000"/>
+	</int:bridge>
+
+ 	<int:chain input-channel="inputChannelErrorChannelQueued" output-channel="outputQueue">
+		<int:header-enricher>
+				<int:error-channel ref="s1Error"/>
+		</int:header-enricher>
+		<int:service-activator ref="saBean" method="bad" />
+	</int:chain>
+
+
+	<!-- **************************************** -->
 	<!-- Output messages -->
 	<!-- **************************************** -->
 

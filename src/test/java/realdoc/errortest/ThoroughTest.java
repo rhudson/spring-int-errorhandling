@@ -42,6 +42,14 @@ public class ThoroughTest {
 	private IntTestGateway gatewayBombs;
 	
 	@Autowired
+	@Qualifier("gatewayErrorChannelInHeader")
+	private IntTestGateway gatewayErrorChannelInHeader;
+	
+	@Autowired
+	@Qualifier("gatewayErrorChannelInHeaderQueued")
+	private IntTestGateway gatewayErrorChannelInHeaderQueued;
+	
+	@Autowired
 	@Qualifier("outputQueue")
 	private PollableChannel outputQueue;
 
@@ -158,7 +166,7 @@ public class ThoroughTest {
 		System.out.println(stopWatch.prettyPrint());
 
 	}
-
+	
 	@Test
 	public void testBombs() {
 		Map<String, Object> request = new HashMap<String, Object>();
@@ -195,6 +203,108 @@ public class ThoroughTest {
 		assertNull(request.get("SLOW"));
 		assertNull(request.get("QUIET"));
 		assertTrue((Boolean)request.get("BAD"));
+
+		System.out.println("DONE");
+		System.out.println(stopWatch.prettyPrint());
+
+	}
+
+	/**
+	 * This method shows that Exceptions will be thrown back to the calling
+	 * Gateway method when using direct channels even if the errorChannel
+	 * header is set.
+	 * 
+	 * From:
+	 * http://static.springsource.org/spring-integration/reference/htmlsingle/#namespace-errorhandler
+	 * 
+	 * "The most important thing to understand here is that the messaging-based
+	 *  error handling will only apply to Exceptions that are thrown by a Spring
+	 *  Integration task that is executing within a TaskExecutor. This does not
+	 *  apply to Exceptions thrown by a handler that is operating within the
+	 *  same thread as the sender (e.g. through a DirectChannel as described above)."
+	 */
+	@Test
+	public void testErrorChannelInHeader() {
+		Map<String, Object> request = new HashMap<String, Object>();
+		StopWatch stopWatch = new StopWatch();
+
+		request.put("FirstName", "Robert");
+		request.put("LastName", "Hudson");
+
+		// Output queues should be empty
+		assertNull(outputQueue.receive(0));
+		assertNull(errorQueue.receive(0));
+		
+		boolean exception = false;
+		stopWatch.start(SUBMIT_ACTION);
+		try {
+			gatewayErrorChannelInHeader.submit(request);
+		} catch (Exception e) {
+			exception = true;
+		}
+		stopWatch.stop();
+
+		assertTrue("gatewayErrorChannelInHeader.submit(request) should be throwing an Exception", exception);
+		
+		assertTrue("gatewayErrorChannelInHeader.submit() method should not be taking so long!",
+				stopWatch.getLastTaskTimeMillis() < MAX_TIME_MILLIS);
+
+		// Since the quiet() method has no return value then nothing will show up on the output queue
+		assertNull(outputQueue.receive(0));
+
+		// Error queue should NOT have received a message
+		assertNull(errorQueue.receive(0));
+		
+		assertNull(request.get("GOOD"));
+		assertNull(request.get("SLOW"));
+		assertNull(request.get("QUIET"));
+		assertTrue((Boolean)request.get("BAD"));
+
+		System.out.println("DONE");
+		System.out.println(stopWatch.prettyPrint());
+
+	}
+
+	/**
+	 * In this case the messages submitted to the gateway will be put in a queue
+	 * to be picked up and processed by another thread.  Since a separate thread
+	 * will be handling the message, an Exception will never be thrown to the 
+	 * calling gateway.  The Exception in this case will go to the errorChannel
+	 * specified in the message header.
+	 */
+	@Test
+	public void testErrorChannelInHeaderQueued() {
+		Map<String, Object> request = new HashMap<String, Object>();
+		StopWatch stopWatch = new StopWatch();
+
+		request.put("FirstName", "Robert");
+		request.put("LastName", "Hudson");
+
+		// Output queues should be empty
+		assertNull(outputQueue.receive(0));
+		assertNull(errorQueue.receive(0));
+		
+		stopWatch.start(SUBMIT_ACTION);
+		gatewayErrorChannelInHeaderQueued.submit(request);
+		stopWatch.stop();
+
+		assertTrue("gatewayErrorChannelInHeaderQueued.submit() method should not be taking so long!",
+				stopWatch.getLastTaskTimeMillis() < MAX_TIME_MILLIS);
+
+		// Output queue should NOT have received a message
+		assertNull(outputQueue.receive(0));
+		
+		Message<Map<String, Object>> message = (Message<Map<String, Object>>) errorQueue.receive(1000);
+		assertNotNull(message);
+		Map<String, Object> error = message.getPayload();
+		
+		assertNull(error.get("GOOD"));
+		assertNull(error.get("SLOW"));
+		assertNull(error.get("QUIET"));
+		assertTrue((Boolean)error.get("BAD"));
+
+		// That should be it for the errors
+		assertNull(errorQueue.receive(0));
 
 		System.out.println("DONE");
 		System.out.println(stopWatch.prettyPrint());
