@@ -67,6 +67,19 @@
 
 
 	<!-- **************************************** -->
+	<!-- Gateway that will bomb out. -->
+	<!-- i.e. - exceptions are not handled internally but rather thrown to the caller -->
+	<!-- **************************************** -->
+
+	<int:gateway id="gatewayBombs" service-interface="realdoc.errortest.IntTestGateway"
+		default-request-channel="inputChannelBombs" />
+
+	<int:chain input-channel="inputChannelBombs" output-channel="outputQueue">
+		<int:service-activator ref="saBean" method="bad" />
+	</int:chain>
+
+
+	<!-- **************************************** -->
 	<!-- Output messages -->
 	<!-- **************************************** -->
 

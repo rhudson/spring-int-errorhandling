@@ -38,6 +38,10 @@ public class ThoroughTest {
 	private IntTestGateway gatewayQuiet;
 	
 	@Autowired
+	@Qualifier("gatewayBombs")
+	private IntTestGateway gatewayBombs;
+	
+	@Autowired
 	@Qualifier("outputQueue")
 	private PollableChannel outputQueue;
 
@@ -149,6 +153,48 @@ public class ThoroughTest {
 		assertNull(request.get("BAD"));
 		assertNull(request.get("SLOW"));
 		assertTrue((Boolean)request.get("QUIET"));
+
+		System.out.println("DONE");
+		System.out.println(stopWatch.prettyPrint());
+
+	}
+
+	@Test
+	public void testBombs() {
+		Map<String, Object> request = new HashMap<String, Object>();
+		StopWatch stopWatch = new StopWatch();
+
+		request.put("FirstName", "Robert");
+		request.put("LastName", "Hudson");
+
+		// Output queues should be empty
+		assertNull(outputQueue.receive(0));
+		assertNull(errorQueue.receive(0));
+		
+		boolean exception = false;
+		stopWatch.start(SUBMIT_ACTION);
+		try {
+			gatewayBombs.submit(request);
+		} catch (Exception e) {
+			exception = true;
+		}
+		stopWatch.stop();
+
+		assertTrue("gatewayBombs.submit(request) should be throwing an Exception", exception);
+		
+		assertTrue("gatewayBombs.submit() method should not be taking so long!",
+				stopWatch.getLastTaskTimeMillis() < MAX_TIME_MILLIS);
+
+		// Since the quiet() method has no return value then nothing will show up on the output queue
+		assertNull(outputQueue.receive(0));
+
+		// Error queue should NOT have received a message
+		assertNull(errorQueue.receive(0));
+		
+		assertNull(request.get("GOOD"));
+		assertNull(request.get("SLOW"));
+		assertNull(request.get("QUIET"));
+		assertTrue((Boolean)request.get("BAD"));
 
 		System.out.println("DONE");
 		System.out.println(stopWatch.prettyPrint());
