@@ -84,7 +84,7 @@
 	<!-- The setting of the errorChannel in the message header in this case is -->
 	<!-- ineffective since all channels are direct.  For subscribable channels -->
 	<!-- (e.g. DirectChannel implementation) any thrown Exceptions will propagate -->
-	<!-- back to the original caller.  In this case that will be the soure gateway. -->
+	<!-- back to the original caller.  In this case that will be the source gateway. -->
 	<!-- **************************************** -->
 
 	<int:gateway id="gatewayErrorChannelInHeader" service-interface="realdoc.errortest.IntTestGateway"
