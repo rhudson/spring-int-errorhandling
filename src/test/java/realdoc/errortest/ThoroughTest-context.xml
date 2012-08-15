@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xsi:schemaLocation="http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.1.xsd
+		http://www.springframework.org/schema/integration/stream http://www.springframework.org/schema/integration/stream/spring-integration-stream-2.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+
+	<!-- The ServiceActivator that will be used by all segments -->
+	<bean id="saBean" class="realdoc.errortest.ServiceActivator" />
+
+
+	<!-- **************************************** -->
+	<!-- Gateway that will execute good(), bad() -->
+	<!-- **************************************** -->
+
+	<int:gateway id="gatewayGoodBad" service-interface="realdoc.errortest.IntTestGateway"
+		default-request-channel="inputChannel" />
+
+	<int:service-activator input-channel="inputChannel"
+		ref="segmentOne" />
+
+	<int:gateway id="segmentOne" default-request-channel="segmentOneInputChannel"
+		error-channel="s1Error" default-reply-timeout="0"/>
+
+	<int:chain input-channel="segmentOneInputChannel" output-channel="outputQueue">
+		<int:service-activator ref="saBean" method="good" />
+		<int:service-activator ref="saBean" method="bad" />
+	</int:chain>
+
+
+	<!-- **************************************** -->
+	<!-- Gateway that will execute slow() -->
+	<!-- **************************************** -->
+
+	<int:gateway id="gatewaySlow" service-interface="realdoc.errortest.IntTestGateway"
+		default-request-channel="inputChannelSlow" />
+
+	<int:service-activator input-channel="inputChannelSlow"
+		ref="segmentSlow" />
+
+	<int:gateway id="segmentSlow" default-request-channel="segmentSlowInputChannel"
+		error-channel="s1Error" default-reply-timeout="0"/>
+
+	<int:chain input-channel="segmentSlowInputChannel" output-channel="outputQueue">
+		<int:service-activator ref="saBean" method="slow" />
+	</int:chain>
+
+
+	<!-- **************************************** -->
+	<!-- Gateway that will execute quiet() -->
+	<!-- **************************************** -->
+
+	<int:gateway id="gatewayQuiet" service-interface="realdoc.errortest.IntTestGateway"
+		default-request-channel="inputChannelQuiet" />
+
+	<int:service-activator input-channel="inputChannelQuiet"
+		ref="segmentQuiet" />
+
+	<int:gateway id="segmentQuiet" default-request-channel="segmentQuietInputChannel"
+		error-channel="s1Error" default-reply-timeout="0"/>
+
+	<int:chain input-channel="segmentQuietInputChannel" output-channel="outputQueue">
+		<int:service-activator ref="saBean" method="quiet" />
+	</int:chain>
+
+
+	<!-- **************************************** -->
+	<!-- Output messages -->
+	<!-- **************************************** -->
+
+	<int:channel id="outputQueue">
+		<int:queue capacity="25"/>
+	</int:channel>
+	
+
+	<!-- **************************************** -->
+	<!-- Error Handler -->
+	<!-- **************************************** -->
+
+	<int:channel id="s1Error" />
+
+	<int:transformer input-channel="s1Error"
+		output-channel="errorQueue"
+		expression="payload.getFailedMessage().getPayload()" />
+
+	<int:channel id="errorQueue">
+		<int:queue capacity="25"/>
+	</int:channel>
+	
+</beans>
