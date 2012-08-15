@@ -111,7 +111,7 @@ public class ThoroughTest {
 		stopWatch.stop();
 
 		assertTrue("gatewaySlow.submit() method should take at least 3 seconds.",
-				stopWatch.getLastTaskTimeMillis() > SLOW_TIME_MILLIS);
+				stopWatch.getLastTaskTimeMillis() >= SLOW_TIME_MILLIS);
 
 		// Error queue should NOT have received a message
 		assertNull(errorQueue.receive(0));
